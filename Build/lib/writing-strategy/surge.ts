@@ -9,6 +9,8 @@ import { OUTPUT_MODULES_DIR, OUTPUT_SURGE_DIR } from '../../constants/dir';
 import { withBannerArray, withIdentityContent } from '../misc';
 
 export class SurgeDomainSet extends BaseWriteStrategy {
+  public readonly name = 'surge domainset';
+
   // readonly type = 'domainset';
   readonly fileExtension = 'conf';
   type = 'domainset';
@@ -46,6 +48,8 @@ export class SurgeDomainSet extends BaseWriteStrategy {
 }
 
 export class SurgeRuleSet extends BaseWriteStrategy {
+  public readonly name = 'surge ruleset';
+
   readonly fileExtension = 'conf';
 
   protected result: string[] = ['DOMAIN,this_ruleset_is_made_by_sukkaw.ruleset.skk.moe'];
@@ -132,6 +136,8 @@ export class SurgeRuleSet extends BaseWriteStrategy {
 }
 
 export class SurgeMitmSgmodule extends BaseWriteStrategy {
+  public readonly name = 'surge sgmodule';
+
   // readonly type = 'domainset';
   readonly fileExtension = 'sgmodule';
   readonly type = '';
@@ -188,7 +194,7 @@ export class SurgeMitmSgmodule extends BaseWriteStrategy {
         urlRegex = urlRegex.slice(9);
       }
 
-      const potentialHostname = urlRegex.split('/')[0]
+      const potentialHostname = urlRegex.slice(0, urlRegex.indexOf('/'))
         // pre process regex
         .replaceAll(String.raw`\.`, '.')
         .replaceAll('.+', '*')

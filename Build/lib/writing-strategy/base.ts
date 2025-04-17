@@ -1,11 +1,14 @@
 import type { Span } from '../../trace';
 import { compareAndWriteFile } from '../create-file';
+import { compareAndWriteFileInWorker } from '../create-file.worker';
 
 /**
  * The class is not about holding rule data, instead it determines how the
  * date is written to a file.
  */
 export abstract class BaseWriteStrategy {
+  public abstract readonly name: string;
+
   /**
    * Sometimes a ruleset will create extra files (e.g. reject-url-regex w/ mitm.sgmodule),
    * and doesn't share the same filename and id. This property is used to overwrite the filename.
@@ -18,7 +21,7 @@ export abstract class BaseWriteStrategy {
 
   public abstract readonly type: 'domainset' | 'non_ip' | 'ip' | (string & {});
 
-  abstract readonly fileExtension: 'conf' | 'txt' | 'json' | 'sgmodule' /* | (string & {}) */;
+  abstract readonly fileExtension: 'conf' | 'txt' | 'json' | 'sgmodule'; /* | (string & {}) */
 
   constructor(public readonly outputDir: string) {}
 
@@ -73,6 +76,19 @@ export abstract class BaseWriteStrategy {
   ): void | Promise<void> {
     if (!this.result) {
       return;
+    }
+
+    if (this.result.length > 1000) {
+      return compareAndWriteFileInWorker(
+        span,
+        this.withPadding(
+          title,
+          description,
+          date,
+          this.result
+        ),
+        filePath
+      );
     }
     return compareAndWriteFile(
       span,

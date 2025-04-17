@@ -33,7 +33,7 @@ jobs:
       - name: Create RAM Disk for building
         id: ramdisk
         run: |
-          BUILD_DIR=$(mktemp -d -p /dev/shm/ -t sukka-surge-public.XXXXXXXXXX)
+          BUILD_DIR=$(mktemp -d -p "$TMPDIR" -t "sukka-surge-public.XXXXXXXXXX")
           echo "Build dir created at $BUILD_DIR"
           echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
       - name: Download Previous Build
@@ -42,6 +42,7 @@ jobs:
           repository: SukkaLab/ruleset.skk.moe
           persist-credentials: false
           path: previous-build-${{ github.run_id }}-${{ github.run_number }}
+          token: ${{ secrets.GIT_TOKEN }}
       - name: Setup build folder
         run: |
           mv previous-build-${{ github.run_id }}-${{ github.run_number }}/{.,}* ${{ steps.ramdisk.outputs.build_dir }}/
@@ -82,9 +83,6 @@ jobs:
             ${{ runner.os }}-v3-${{ steps.date.outputs.year }}-
             ${{ runner.os }}-v3-
       - run: pnpm install
-      - uses: catchpoint/workflow-telemetry-action@v2
-        with:
-          comment_on_pr: false
       - run: pnpm run build
         env:
           PUBLIC_DIR: ${{ steps.ramdisk.outputs.build_dir }}
@@ -146,18 +144,21 @@ jobs:
     name: Deploy to Cloudflare Pages
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04-arm
+    # matrix is a tricky way to define a variable directly in the jon yaml
+    strategy:
+      matrix:
+        wranglerVersion: ['3.114.6']
     steps:
       - name: Get NPM cache directory path
         id: npm_cache_path
         shell: sh
         run: echo dir=$(npm config get cache) >> $GITHUB_OUTPUT
-      - name: Cache NPM cache
-        uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
           path: |
             ${{ steps.npm_cache_path.outputs.dir }}
             node_modules
-          key: ${{ runner.os }}-${{ runner.arch }}-deploy-to-cloudflare-npm
+          key: deploy-to-cloudflare-npm-${{ runner.os }}-${{ runner.arch }}-wrangler-${{ matrix.wranglerVersion }}
       - uses: actions/download-artifact@v4
         with:
           name: build-artifact-${{ github.sha }}-${{ github.run_number }}
@@ -168,7 +169,13 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy public --project-name=sukkaw-ruleset --commit-dirty=true --branch=main
-          wranglerVersion: '3.81.0'
+          wranglerVersion: ${{ matrix.wranglerVersion }}
+      - uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ steps.npm_cache_path.outputs.dir }}
+            node_modules
+          key: deploy-to-cloudflare-npm-${{ runner.os }}-${{ runner.arch }}-wrangler-${{ matrix.wranglerVersion }}
   deploy_to_github_gitlab:
     needs:
       - build
@@ -203,6 +210,7 @@ jobs:
       - name: Upload Dist to GitHub
         continue-on-error: true
         run: |
+          gh repo unarchive SukkaLab/ruleset.skk.moe --yes
           git clone --filter=tree:0 --no-tags https://${GH_USER}:${GH_TOKEN}@github.com/SukkaLab/ruleset.skk.moe.git ./deploy-git
           cd ./deploy-git
           git config --global push.default matching
@@ -216,6 +224,7 @@ jobs:
           git push --quiet --force origin HEAD:master
           cd ..
           rm -rf ./deploy-git
+          gh repo archive SukkaLab/ruleset.skk.moe --yes
         env:
           GH_EMAIL: ${{ secrets.GIT_EMAIL }}
           GH_USER: ${{ secrets.GIT_USER }}

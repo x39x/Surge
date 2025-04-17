@@ -1,17 +1,42 @@
-import { fetchRemoteTextByLine } from './lib/fetch-text-by-line';
+import { fetchRemoteTextByLine, readFileByLine } from './lib/fetch-text-by-line';
 import tldts from 'tldts';
+import { HostnameSmolTrie } from './lib/trie';
+import path from 'node:path';
+import { SOURCE_DIR } from './constants/dir';
+import { processLine } from './lib/process-line';
 
 (async () => {
-  const lines = await Array.fromAsync(await fetchRemoteTextByLine('https://raw.githubusercontent.com/durablenapkin/block/master/luminati.txt', true));
+  const lines1 = await Array.fromAsync(await fetchRemoteTextByLine('https://raw.githubusercontent.com/durablenapkin/block/master/luminati.txt', true));
+  const lines2 = await Array.fromAsync(await fetchRemoteTextByLine('https://raw.githubusercontent.com/durablenapkin/block/master/tvstream.txt', true));
 
-  const set = new Set<string>();
+  const trie = new HostnameSmolTrie();
 
-  lines.forEach((line) => {
+  lines1.forEach((line) => {
     const apexDomain = tldts.getDomain(line.slice(8));
     if (apexDomain) {
-      set.add(apexDomain);
+      trie.add(apexDomain);
+    }
+  });
+  lines2.forEach((line) => {
+    const apexDomain = tldts.getDomain(line.slice(8));
+    if (apexDomain) {
+      trie.add(apexDomain);
     }
   });
 
-  console.log(Array.from(set).map(line => '.' + line).join('\n'));
+  const dataFromDuckDuckGo = await fetch('https://raw.githubusercontent.com/duckduckgo/tracker-radar/92e086ce38a8a88c964ed0184e5277ec1d5c8038/entities/Bright%20Data%20Ltd..json').then((res) => res.json());
+  if (typeof dataFromDuckDuckGo === 'object' && dataFromDuckDuckGo !== null && 'properties' in dataFromDuckDuckGo && Array.isArray(dataFromDuckDuckGo.properties)) {
+    dataFromDuckDuckGo.properties.forEach((prop) => {
+      trie.add(prop);
+    });
+  }
+
+  for await (const line of readFileByLine(path.join(SOURCE_DIR, 'domainset', 'reject.conf'))) {
+    const l = processLine(line);
+    if (l) {
+      trie.whitelist(l);
+    }
+  }
+
+  console.log(trie.dump().map(i => '.' + i).join('\n'));
 })();

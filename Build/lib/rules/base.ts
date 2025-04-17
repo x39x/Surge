@@ -1,6 +1,6 @@
 import type { Span } from '../../trace';
 import { HostnameSmolTrie } from '../trie';
-import { invariant, not } from 'foxts/guard';
+import { not, nullthrow } from 'foxts/guard';
 import type { MaybePromise } from '../misc';
 import type { BaseWriteStrategy } from '../writing-strategy/base';
 import { merge as mergeCidr } from 'fast-cidr-tools';
@@ -96,7 +96,7 @@ export class FileOutput {
   }
 
   addDomainSuffix(domain: string, lineFromDot = domain[0] === '.') {
-    this.domainTrie.add(domain, true, lineFromDot ? 1 : 0);
+    this.domainTrie.add(domain, true, null, lineFromDot ? 1 : 0);
     return this;
   }
 
@@ -124,8 +124,8 @@ export class FileOutput {
     return this;
   }
 
-  private async addFromDomainsetPromise(source: AsyncIterable<string> | Iterable<string> | string[]) {
-    for await (const line of source) {
+  private async addFromDomainsetPromise(source: MaybePromise<AsyncIterable<string> | Iterable<string> | string[]>) {
+    for await (const line of await source) {
       if (line[0] === '.') {
         this.addDomainSuffix(line, true);
       } else {
@@ -136,23 +136,15 @@ export class FileOutput {
 
   addFromDomainset(source: MaybePromise<AsyncIterable<string> | Iterable<string> | string[]>) {
     if (this.pendingPromise) {
-      if ('then' in source) {
-        this.pendingPromise = this.pendingPromise.then(() => source).then(src => this.addFromDomainsetPromise(src));
-        return this;
-      }
       this.pendingPromise = this.pendingPromise.then(() => this.addFromDomainsetPromise(source));
-      return this;
-    }
-    if ('then' in source) {
-      this.pendingPromise = source.then(src => this.addFromDomainsetPromise(src));
       return this;
     }
     this.pendingPromise = this.addFromDomainsetPromise(source);
     return this;
   }
 
-  private async addFromRulesetPromise(source: AsyncIterable<string> | Iterable<string> | string[]) {
-    for await (const line of source) {
+  private async addFromRulesetPromise(source: MaybePromise<AsyncIterable<string> | Iterable<string> | string[]>) {
+    for await (const line of await source) {
       const splitted = line.split(',');
       const type = splitted[0];
       const value = splitted[1];
@@ -216,15 +208,7 @@ export class FileOutput {
 
   addFromRuleset(source: MaybePromise<AsyncIterable<string> | Iterable<string>>) {
     if (this.pendingPromise) {
-      if ('then' in source) {
-        this.pendingPromise = this.pendingPromise.then(() => source).then(src => this.addFromRulesetPromise(src));
-        return this;
-      }
       this.pendingPromise = this.pendingPromise.then(() => this.addFromRulesetPromise(source));
-      return this;
-    }
-    if ('then' in source) {
-      this.pendingPromise = source.then(src => this.addFromRulesetPromise(src));
       return this;
     }
     this.pendingPromise = this.addFromRulesetPromise(source);
@@ -442,25 +426,24 @@ export class FileOutput {
       return childSpan.traceChildAsync('output to disk', (childSpan) => {
         const promises: Array<Promise<void> | void> = [];
 
-        invariant(this.title, 'Missing title');
-        invariant(this.description, 'Missing description');
-
         for (let i = 0, len = this.strategies.length; i < len; i++) {
           const strategy = this.strategies[i];
           if (strategy) {
             const basename = (strategy.overwriteFilename || this.id) + '.' + strategy.fileExtension;
-            promises.push(strategy.output(
-              childSpan,
-              this.title,
-              this.description,
-              this.date,
-              path.join(
-                strategy.outputDir,
-                strategy.type
-                  ? path.join(strategy.type, basename)
-                  : basename
-              )
-            ));
+            promises.push(
+              childSpan.traceChildAsync('write ' + strategy.name, (childSpan) => Promise.resolve(strategy.output(
+                childSpan,
+                nullthrow(this.title, 'Missing title'),
+                nullthrow(this.description, 'Missing description'),
+                this.date,
+                path.join(
+                  strategy.outputDir,
+                  strategy.type
+                    ? path.join(strategy.type, basename)
+                    : basename
+                )
+              )))
+            );
           }
         }
 

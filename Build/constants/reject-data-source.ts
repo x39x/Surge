@@ -9,31 +9,48 @@ export const HOSTS: HostsSource[] = [
     ['https://raw.githubusercontent.com/crazy-max/WindowsSpyBlocker/master/data/hosts/spy.txt'],
     true
   ],
-  ['https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Extension/GoodbyeAds-Xiaomi-Extension.txt', null, false],
-  ['https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Extension/GoodbyeAds-Huawei-AdBlock.txt', null, false]
+  [
+    'https://cdn.jsdelivr.net/gh/jerryn70/GoodbyeAds@master/Extension/GoodbyeAds-Xiaomi-Extension.txt',
+    ['https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Extension/GoodbyeAds-Xiaomi-Extension.txt'],
+    false
+  ],
+  [
+    'https://cdn.jsdelivr.net/gh/jerryn70/GoodbyeAds@master/Extension/GoodbyeAds-Huawei-AdBlock.txt',
+    ['https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Extension/GoodbyeAds-Huawei-AdBlock.txt'],
+    false
+  ],
+  [
+    'https://cdn.jsdelivr.net/gh/jerryn70/GoodbyeAds@master/Extension/GoodbyeAds-Samsung-AdBlock.txt',
+    ['https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Extension/GoodbyeAds-Samsung-AdBlock.txt'],
+    false
+  ]
 ];
 
 export const HOSTS_EXTRA: HostsSource[] = [
-  ['https://raw.githubusercontent.com/durablenapkin/block/master/tvstream.txt', null, true],
   // This stupid hosts blocks t.co, so we determine that this is also bullshit, so it is extra
   [
     'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext',
     ['https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/thirdparties/pgl.yoyo.org/as/serverlist'],
     true
-
   ],
   // Dan Pollock's hosts file, 0.0.0.0 version is 30 KiB smaller
   [
-    'https://someonewhocares.org/hosts/zero/hosts',
-    ['https://proxy.cdn.skk.moe/https/someonewhocares.org/hosts/zero/hosts'],
+    'https://proxy.cdn.skk.moe/https/someonewhocares.org/hosts/zero/hosts',
+    ['https://someonewhocares.org/hosts/zero/hosts'],
     true
-
   ],
-  // ad-wars is not actively maintained since 2023.11, so we use jsDelivr as primary URL
+  // ad-wars is not actively maintained since 2023.11 due to Tencent's Legal Notice
+  // All contents has been intergrated into the reject.conf file
+  // [
+  //   'https://cdn.jsdelivr.net/gh/jdlingyu/ad-wars@master/hosts',
+  //   ['https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts'],
+  //   false
+  // ],
+  // hoshsadiq adblock-nocoin-list extra
   [
-    'https://cdn.jsdelivr.net/gh/jdlingyu/ad-wars@master/hosts',
-    ['https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts'],
-    false
+    'https://cdn.jsdelivr.net/gh/hoshsadiq/adblock-nocoin-list@master/hosts.txt',
+    ['https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/hosts.txt'],
+    true
   ]
 ];
 
@@ -54,10 +71,10 @@ export const DOMAIN_LISTS_EXTRA: HostsSource[] = [
   // instead we maintain a list of our own
 
   // BarbBlock
-  // The barbblock list has never been updated since 2019-05, so we set a 14 days cache ttl
+  // The barbblock list has never been updated since ~~2019-05~~ 2023-10, so we use jsdelivr instead
   [
-    'https://paulgb.github.io/BarbBlock/blacklists/domain-list.txt',
-    ['https://raw.githubusercontent.com/paulgb/BarbBlock/refs/heads/main/blacklists/domain-list.txt'],
+    'https://cdn.jsdelivr.net/gh/paulgb/BarbBlock@main/blacklists/domain-list.txt',
+    ['https://paulgb.github.io/BarbBlock/blacklists/domain-list.txt'],
     true
   ],
   // DigitalSide Threat-Intel - OSINT Hub
@@ -79,13 +96,15 @@ export const DOMAIN_LISTS_EXTRA: HostsSource[] = [
     ],
     true
   ],
-  [
-    'https://cdn.jsdelivr.net/gh/AdguardTeam/cname-trackers@master/data/combined_disguised_clickthroughs_justdomains.txt',
-    [
-      'https://raw.githubusercontent.com/AdguardTeam/cname-trackers/master/data/combined_disguised_clickthroughs_justdomains.txt'
-    ],
-    true
-  ],
+  // Disable clickthrough set. Many mail SaaS uses this kind of technique on their links (even normal links)
+  // E.g. links.strava.com
+  // [
+  //   'https://cdn.jsdelivr.net/gh/AdguardTeam/cname-trackers@master/data/combined_disguised_clickthroughs_justdomains.txt',
+  //   [
+  //     'https://raw.githubusercontent.com/AdguardTeam/cname-trackers/master/data/combined_disguised_clickthroughs_justdomains.txt'
+  //   ],
+  //   true
+  // ],
   [
     'https://cdn.jsdelivr.net/gh/AdguardTeam/cname-trackers@master/data/combined_disguised_microsites_justdomains.txt',
     [
@@ -267,7 +286,11 @@ export const ADGUARD_FILTERS_EXTRA: AdGuardFilterSource[] = [
     ]
   ],
   // no coin list adguard list is more maintained than its hosts
-  ['https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/nocoin.txt', [], true],
+  [
+    'https://cdn.jsdelivr.net/gh/hoshsadiq/adblock-nocoin-list@master/nocoin.txt',
+    ['https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/nocoin.txt'],
+    true
+  ],
   // AdGuard Annoyances filter
   [
     'https://filters.adtidy.org/extension/ublock/filters/14_optimized.txt',
@@ -393,6 +416,7 @@ export const CRASHLYTICS_WHITELIST = [
   '.metric.gstatic.com',
   // Misc
   'telemetry.1passwordservices.com',
+  'b5x-sentry.1passwordservices.com',
   'events.tableplus.com',
   'telemetry.nextjs.org',
   'telemetry.vercel.com',
@@ -490,7 +514,6 @@ export const PREDEFINED_WHITELIST = [
   'ab.chatgpt.com', // EasyPrivacy blocks this
   'jnn-pa.googleapis.com', // ad-wars
   'imasdk.googleapis.com', // ad-wars
-  '.l.qq.com', // ad-wars
   '.in-addr.arpa', // rDNS
   '.ip6.arpa', // rDNS
   '.clients.your-server.de', // rDNS .static.183.213.201.138.clients.your-server.de
@@ -506,11 +529,19 @@ export const PREDEFINED_WHITELIST = [
   '.ib.snssdk.com', // AdGuard Tracking Protection -- breaks 今日头条专业版
   '.nstool.netease.com', // it is only used to check local dns
   '.wns.windows.com', // Windows Push Notifications. Besides there is no point in adding these
-  '.lon.llnw.net', // There is no point in adding these, many subdomains are dead anyway
-  '.lcy.llnw.net', // There is no point in adding these, many subdomains are dead anyway
+
+  // There is no point in adding these, many subdomains are dead anyway
+  '.lon.llnw.net',
+  '.lcy.llnw.net',
+  '.ory.llnw.net',
+
   'repo.huaweicloud.com', // urlhaus
   '.hubspotlinks.com', // Peter Lowe Hosts
   'cldup.com', // OSINT
+  'cuty.io', // short domain like bitly, blocked by phishing army
+  'links.strava.com', // AdGuard CNAME Clickthrough Filters
+  'email.strava.com', // EasyList
+  'insideruser.microsoft.com', // WindowsSpyBlocker
 
   // Doesn't make sense: CNAME domains
   '.cdn.cloudflare.net',

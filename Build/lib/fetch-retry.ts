@@ -118,9 +118,11 @@ setGlobalDispatcher(agent.compose(
   }),
   interceptors.cache({
     store: new BetterSqlite3CacheStore({
+      loose: true,
       location: path.join(CACHE_DIR, 'undici-better-sqlite3-cache-store.db'),
       maxEntrySize: 1024 * 1024 * 100 // 100 MiB
-    })
+    }),
+    cacheByDefault: 180 // 3 minutes
   })
 ));
 
@@ -151,7 +153,7 @@ export class ResponseError<T extends UndiciResponseData | Response> extends Erro
 
 export const defaultRequestInit = {
   headers: {
-    'User-Agent': 'curl/8.9.1 (https://github.com/SukkaW/Surge)'
+    'User-Agent': 'curl/8.12.1 (https://github.com/SukkaW/Surge)'
   }
 };
 

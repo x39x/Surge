@@ -21,8 +21,8 @@ import { DomainsetOutput } from './lib/rules/domainset';
 import { foundDebugDomain } from './lib/parse-filter/shared';
 import { AdGuardHomeOutput } from './lib/rules/domainset';
 
-const readLocalRejectDomainsetPromise = readFileIntoProcessedArray(path.join(SOURCE_DIR, 'domainset/reject_sukka.conf'));
-const readLocalRejectExtraDomainsetPromise = readFileIntoProcessedArray(path.join(SOURCE_DIR, 'domainset/reject_sukka_extra.conf'));
+const readLocalRejectDomainsetPromise = readFileIntoProcessedArray(path.join(SOURCE_DIR, 'domainset/reject.conf'));
+const readLocalRejectExtraDomainsetPromise = readFileIntoProcessedArray(path.join(SOURCE_DIR, 'domainset/reject_extra.conf'));
 const readLocalRejectRulesetPromise = readFileIntoProcessedArray(path.join(SOURCE_DIR, 'non_ip/reject.conf'));
 const readLocalRejectDropRulesetPromise = readFileIntoProcessedArray(path.join(SOURCE_DIR, 'non_ip/reject-drop.conf'));
 const readLocalRejectNoDropRulesetPromise = readFileIntoProcessedArray(path.join(SOURCE_DIR, 'non_ip/reject-no-drop.conf'));
@@ -76,6 +76,16 @@ export const buildRejectDomainSet = task(require.main === module, __filename)(as
   await span
     .traceChild('download and process hosts / adblock filter rules')
     .traceAsyncFn((childSpan) => Promise.all([
+      // Dedupe domainSets
+      // Collect DOMAIN, DOMAIN-SUFFIX, and DOMAIN-KEYWORD from non_ip/reject.conf for deduplication
+      // DOMAIN-WILDCARD is not really useful for deduplication, it is only included in AdGuardHome output
+      // It is faster to add base than add others first then whitelist
+      rejectOutput.addFromRuleset(readLocalRejectRulesetPromise),
+      rejectExtraOutput.addFromRuleset(readLocalRejectRulesetPromise),
+      readLocalRejectDomainsetPromise.then(appendArrayToRejectOutput),
+      readLocalRejectDomainsetPromise.then(appendArrayToRejectExtraOutput),
+      readLocalRejectExtraDomainsetPromise.then(appendArrayToRejectExtraOutput),
+
       // Parse from remote hosts & domain lists
       hostsDownloads.map(task => task(childSpan).then(appendArrayToRejectOutput)),
       hostsExtraDownloads.map(task => task(childSpan).then(appendArrayToRejectExtraOutput)),
@@ -109,18 +119,7 @@ export const buildRejectDomainSet = task(require.main === module, __filename)(as
           addArrayElementsToSet(filterRuleWhitelistDomainSets, blackDomainSuffixes, suffix => '.' + suffix);
         })
       ),
-      getPhishingDomains(childSpan).then(appendArrayToRejectExtraOutput),
-      readLocalRejectDomainsetPromise.then(appendArrayToRejectOutput),
-      readLocalRejectDomainsetPromise.then(appendArrayToRejectExtraOutput),
-      readLocalRejectExtraDomainsetPromise.then(appendArrayToRejectExtraOutput),
-      // Dedupe domainSets
-      // span.traceChildAsync('collect black keywords/suffixes', async () =>
-      /**
-         * Collect DOMAIN, DOMAIN-SUFFIX, and DOMAIN-KEYWORD from non_ip/reject.conf for deduplication
-         * DOMAIN-WILDCARD is not really useful for deduplication, it is only included in AdGuardHome output
-        */
-      rejectOutput.addFromRuleset(readLocalRejectRulesetPromise),
-      rejectExtraOutput.addFromRuleset(readLocalRejectRulesetPromise)
+      getPhishingDomains(childSpan).then(appendArrayToRejectExtraOutput)
     ].flat()));
 
   if (foundDebugDomain.value) {
@@ -163,5 +162,6 @@ export const buildRejectDomainSet = task(require.main === module, __filename)(as
     .addFromRuleset(readLocalRejectRulesetPromise)
     .addFromRuleset(readLocalRejectDropRulesetPromise)
     .addFromRuleset(readLocalRejectNoDropRulesetPromise)
+    .addFromDomainset(readLocalRejectExtraDomainsetPromise)
     .write();
 });
